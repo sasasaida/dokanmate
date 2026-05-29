@@ -98,6 +98,10 @@ export default function TabLayout() {
           tabBarIcon: tabIcon("wallet-outline"),
         }}
       />
+      <Tabs.Screen
+        name="expenses/add"
+        options={{ href: null }} // Hides from tab bar
+      />
     </Tabs>
   );
 }
