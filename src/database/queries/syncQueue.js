@@ -23,6 +23,7 @@ export const enqueue = async (tableName, recordId, operation, payload) => {
      VALUES (?, ?, ?, ?, 0, ?)`,
     [tableName, recordId, operation, JSON.stringify(payload), now]
   );
+  console.log('[Queue] Enqueued:', tableName, operation, recordId);
 };
 
 /**

@@ -106,9 +106,11 @@ export const runSync = async () => {
         await dequeue(item.id);
         await markAsSynced(item.tableName, item.recordId);
         synced++;
+        console.log('[Sync] Uploaded:', item.tableName, item.recordId);
       } else {
         await incrementRetry(item.id);
         failed++;
+        console.log('[Sync] Failed:', item.tableName, error.message);
       }
     }
 
