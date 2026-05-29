@@ -1,16 +1,15 @@
 // app/_layout.js
-// Root of the entire app.
-// Initializes the database, wraps everything in providers.
-
-import { Slot } from "expo-router";
-import { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
-import "react-native-gesture-handler";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import { Toast } from "../src/components/common/Toast";
-import { Colors } from "../src/constants/colors";
-import { AppProvider, useApp } from "../src/context/AppContext";
-import { runMigrations } from "../src/database/migrations";
+import 'react-native-gesture-handler';
+import React, { useEffect, useState } from 'react';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { Slot } from 'expo-router';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { runMigrations } from '../src/database/migrations';
+import { AppProvider, useApp } from '../src/context/AppContext';
+import { Colors } from '../src/constants/colors';
+import { Toast } from '../src/components/common/Toast';
+import { useNetwork } from '../src/hooks/useNetwork';
+import { runSync } from '../src/services/syncService';
 
 export default function RootLayout() {
   const [dbReady, setDbReady] = useState(false);
@@ -18,7 +17,7 @@ export default function RootLayout() {
   useEffect(() => {
     runMigrations()
       .then(() => setDbReady(true))
-      .catch((err) => console.error("DB init failed:", err));
+      .catch((err) => console.error('DB init failed:', err));
   }, []);
 
   if (!dbReady) {
@@ -32,15 +31,29 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <AppProvider>
-        <AppWithToast />
+        <AppWithSync />
       </AppProvider>
     </SafeAreaProvider>
   );
 }
 
-// Separate component so it can access AppContext for toast
-const AppWithToast = () => {
-  const { toast } = useApp();
+// Separate component — needs AppContext for toast
+const AppWithSync = () => {
+  const { toast, showToast } = useApp();
+  const { isConnected }      = useNetwork();
+
+  // Trigger sync whenever we detect internet connection
+  useEffect(() => {
+    if (!isConnected) return;
+
+    console.log('[App] Internet detected — starting sync');
+    runSync().then(({ synced, failed }) => {
+      if (synced > 0) {
+        console.log(`[App] Synced ${synced} records`);
+      }
+    });
+  }, [isConnected]);
+
   return (
     <View style={{ flex: 1 }}>
       <Slot />
@@ -52,8 +65,8 @@ const AppWithToast = () => {
 const styles = StyleSheet.create({
   loading: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: Colors.background,
   },
 });

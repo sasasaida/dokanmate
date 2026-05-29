@@ -5,6 +5,7 @@
 import { getDatabase } from '../db';
 import uuid from 'react-native-uuid';
 import { deductStock } from './products';
+import { enqueue } from './syncQueue';  // ADDED: queue for background sync
 
 // ---------- CREATE ----------
 
@@ -60,6 +61,16 @@ export const createSale = async ({ cartItems, paymentMethod, customerId, note })
 
     // Deduct stock immediately after each item is saved
     await deductStock(item.id, item.quantity);
+  }
+
+  // Queue the sale header
+  enqueue('sales', saleId, 'INSERT', {
+    id: saleId, customerId, totalAmount, paymentMethod, note, createdAt: now,
+  }).catch(() => {});
+
+  // Queue each sale item
+  for (const item of cartItems) {
+    enqueue('sale_items', item.itemId, 'INSERT', item).catch(() => {});
   }
 
   return { saleId, totalAmount };

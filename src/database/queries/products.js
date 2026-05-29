@@ -5,6 +5,7 @@
 
 import { getDatabase } from '../db';
 import uuid from 'react-native-uuid';
+import { enqueue } from './syncQueue';  // ADDED: queue for background sync
 
 // ---------- CREATE ----------
 
@@ -33,8 +34,20 @@ export const createProduct = async (productData) => {
     ]
   );
 
+  const newProduct = { 
+    id, 
+    ...productData, 
+    isDeleted: 0, 
+    createdAt: now, 
+    updatedAt: now, 
+    isSynced: 0 
+  };
+
+  // Queue for background sync — non-blocking
+  enqueue('products', id, 'INSERT', newProduct).catch(() => {});
+
   // Return the full product so the UI can update immediately
-  return { id, ...productData, isDeleted: 0, createdAt: now, updatedAt: now, isSynced: 0 };
+  return newProduct;
 };
 
 // ---------- READ ----------
@@ -123,6 +136,10 @@ export const updateProduct = async (id, productData) => {
       id,
     ]
   );
+
+  // Queue for background sync — non-blocking
+  enqueue('products', id, 'UPDATE', { id, ...productData, updatedAt: now })
+    .catch(() => {});
 };
 
 /**
@@ -141,6 +158,13 @@ export const deductStock = async (productId, quantity) => {
      WHERE id = ?`,
     [quantity, now, productId]
   );
+  
+  // Queue stock deduction for sync
+  enqueue('products', productId, 'UPDATE', { 
+    id: productId, 
+    stockDeduction: quantity, 
+    updatedAt: now 
+  }).catch(() => {});
 };
 
 // ---------- DELETE ----------
@@ -161,4 +185,7 @@ export const deleteProduct = async (id) => {
      WHERE id = ?`,
     [now, id]
   );
+
+  // Queue for background sync — non-blocking
+  enqueue('products', id, 'DELETE', { id, deletedAt: now }).catch(() => {});
 };

@@ -3,6 +3,7 @@
 
 import { getDatabase } from '../db';
 import uuid from 'react-native-uuid';
+import { enqueue } from './syncQueue';
 
 // ─── CREATE ────────────────────────────────────────────────
 
@@ -22,6 +23,9 @@ export const createExpense = async ({ category, amount, note, date }) => {
      VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
     [id, category, amount, note?.trim() ?? null, date, now, now]
   );
+
+  enqueue('expenses', id, 'INSERT', { id, category, amount, note, date, createdAt: now })
+    .catch(() => {});
 
   return { id, category, amount, note: note?.trim() ?? null,
            date, createdAt: now, updatedAt: now, isSynced: 0 };
@@ -116,6 +120,9 @@ export const updateExpense = async (id, { category, amount, note, date }) => {
      WHERE id = ?`,
     [category, amount, note?.trim() ?? null, date, now, id]
   );
+  enqueue('expenses', id, 'UPDATE', { id, category, amount, note, date })
+    .catch(() => {});
+
 };
 
 // ─── DELETE ────────────────────────────────────────────────

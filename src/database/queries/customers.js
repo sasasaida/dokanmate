@@ -4,6 +4,7 @@
 
 import { getDatabase } from '../db';
 import uuid from 'react-native-uuid';
+import { enqueue } from './syncQueue';
 
 // ─── CUSTOMERS ────────────────────────────────────────────
 
@@ -22,6 +23,9 @@ export const createCustomer = async ({ name, phone, note }) => {
      VALUES (?, ?, ?, 0, ?, ?, ?, 0)`,
     [id, name.trim(), phone?.trim() ?? null, note?.trim() ?? null, now, now]
   );
+
+  enqueue('customers', id, 'INSERT', { id, name, phone, note, totalDue: 0, createdAt: now })
+    .catch(() => {});
 
   return { id, name: name.trim(), phone: phone?.trim() ?? null,
            totalDue: 0, note: note?.trim() ?? null,
@@ -127,6 +131,10 @@ export const addDueTransaction = async ({ customerId, amount, note }) => {
     [id, customerId, amount, note?.trim() ?? null, now]
   );
 
+  enqueue('transactions', id, 'INSERT', {
+    id, customerId, type: 'due', amount, note, createdAt: now,
+  }).catch(() => {});
+
   // Recalculate the customer's running balance
   const newBalance = await recalculateCustomerDue(customerId);
   return { id, newBalance };
@@ -147,6 +155,10 @@ export const addPaymentTransaction = async ({ customerId, amount, note }) => {
      VALUES (?, ?, 'payment', ?, ?, 0, null, ?, 0)`,
     [id, customerId, amount, note?.trim() ?? null, now]
   );
+
+  enqueue('transactions', id, 'INSERT', {
+    id, customerId, type: 'payment', amount, note, createdAt: now,
+  }).catch(() => {});
 
   const newBalance = await recalculateCustomerDue(customerId);
   return { id, newBalance };
