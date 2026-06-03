@@ -78,8 +78,6 @@ const markAsSynced = async (tableName, recordId) => {
  * Returns { synced, failed, remaining }
  */
 export const runSync = async () => {
-  let synced    = 0;
-  let failed    = 0;
   const results = { synced: 0, failed: 0, remaining: 0 };
 
   try {
@@ -92,10 +90,10 @@ export const runSync = async () => {
 
     console.log(`[Sync] Starting — ${queue.length} items pending`);
 
+    let failStreak = 0;
+
     for (const item of queue) {
-      // Stop if we've hit 5 consecutive failures
-      // Likely means internet dropped mid-sync
-      if (failed >= 5) {
+      if (failStreak >= 5) {
         console.log('[Sync] Too many failures — stopping early');
         break;
       }
@@ -105,23 +103,22 @@ export const runSync = async () => {
       if (success) {
         await dequeue(item.id);
         await markAsSynced(item.tableName, item.recordId);
-        synced++;
-        console.log('[Sync] Uploaded:', item.tableName, item.recordId);
+        results.synced++;
+        failStreak = 0; // reset streak on success
       } else {
         await incrementRetry(item.id);
-        failed++;
-        console.log('[Sync] Failed:', item.tableName, error.message);
+        results.failed++;
+        failStreak++;
       }
     }
 
-    results.synced    = synced;
-    results.failed    = failed;
-    results.remaining = queue.length - synced;
+    results.remaining = results.failed;
+    console.log(`[Sync] Done — synced: ${results.synced}, failed: ${results.failed}`);
 
-    console.log(`[Sync] Done — synced: ${synced}, failed: ${failed}`);
   } catch (err) {
-    console.error('[Sync] Sync pass failed:', err);
+    // was referencing undefined 'error' variable before — fixed to 'err'
+    console.error('[Sync] Sync pass failed:', err.message);
   }
 
   return results;
-};
+};     
