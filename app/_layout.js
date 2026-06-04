@@ -2,7 +2,7 @@
 import 'react-native-gesture-handler';
 import React, { useEffect, useState } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { Slot } from 'expo-router';
+import { Slot, router } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { runMigrations } from '../src/database/migrations';
 import { AppProvider, useApp } from '../src/context/AppContext';
@@ -10,17 +10,52 @@ import { Colors } from '../src/constants/colors';
 import { Toast } from '../src/components/common/Toast';
 import { useNetwork } from '../src/hooks/useNetwork';
 import { runSync } from '../src/services/syncService';
+import { getShopId } from '../src/services/shopService';
+import { loadToken } from '../src/services/authService';
 
 export default function RootLayout() {
-  const [dbReady, setDbReady] = useState(false);
+  const [appReady, setAppReady] = useState(false);
 
   useEffect(() => {
-    runMigrations()
-      .then(() => setDbReady(true))
-      .catch((err) => console.error('DB init failed:', err));
+    let isMounted = true;
+
+    const initialize = async () => {
+      try {
+        await runMigrations();
+
+        if (isMounted) {
+          setAppReady(true);
+        }
+
+        // Load token into axios headers if it exists
+        await loadToken();
+
+        const shopId = await getShopId();
+
+        if (isMounted) {
+          if (shopId) {
+            router.replace('/(tabs)');
+          } else {
+            router.replace('/register');
+          }
+        }
+      } catch (err) {
+        console.error('Init failed:', err);
+        if (isMounted) {
+          setAppReady(true);
+        }
+        router.replace('/register');
+      }
+    };
+
+    initialize();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  if (!dbReady) {
+  if (!appReady) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator size="large" color={Colors.primary} />
@@ -37,21 +72,13 @@ export default function RootLayout() {
   );
 }
 
-// Separate component — needs AppContext for toast
 const AppWithSync = () => {
-  const { toast, showToast } = useApp();
-  const { isConnected }      = useNetwork();
+  const { toast }       = useApp();
+  const { isConnected } = useNetwork();
 
-  // Trigger sync whenever we detect internet connection
   useEffect(() => {
     if (!isConnected) return;
-
-    console.log('[App] Internet detected — starting sync');
-    runSync().then(({ synced, failed }) => {
-      if (synced > 0) {
-        console.log(`[App] Synced ${synced} records`);
-      }
-    });
+    runSync().catch(() => {});
   }, [isConnected]);
 
   return (

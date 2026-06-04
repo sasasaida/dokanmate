@@ -23,7 +23,7 @@ const ENDPOINT_MAP = {
 
 /**
  * Upload a single queue item to the server.
- * Returns true if successful, false if it failed.
+ * Returns true if successful, false if it failed, or 'AUTH_ERROR' if auth failed.
  */
 const uploadItem = async (queueItem) => {
   const endpoint = ENDPOINT_MAP[queueItem.tableName];
@@ -43,9 +43,16 @@ const uploadItem = async (queueItem) => {
     });
 
     return true;
-  } catch (error) {
+  } catch (err) {
+    if (err.response?.status === 401) {
+      // Token expired or invalid
+      // Don't crash — just stop syncing until user logs in
+      console.log('[Sync] Auth error — token may be expired');
+      return 'AUTH_ERROR'; // Special return value
+    }
+
     // Network error or server error — will retry later
-    console.log(`[Sync] Failed to upload ${queueItem.tableName}:`, error.message);
+    console.log(`[Sync] Failed to upload ${queueItem.tableName}:`, err.message);
     return false;
   }
 };
@@ -73,12 +80,12 @@ const markAsSynced = async (tableName, recordId) => {
 /**
  * Run a full sync pass.
  * Processes queue items one by one.
- * Stops early if too many failures (bad connection).
+ * Stops early if too many failures or auth error.
  *
- * Returns { synced, failed, remaining }
+ * Returns { synced, failed, remaining, needsAuth }
  */
 export const runSync = async () => {
-  const results = { synced: 0, failed: 0, remaining: 0 };
+  const results = { synced: 0, failed: 0, remaining: 0, needsAuth: false };
 
   try {
     const queue = await getPendingQueue();
@@ -100,7 +107,12 @@ export const runSync = async () => {
 
       const success = await uploadItem(item);
 
-      if (success) {
+      if (success === 'AUTH_ERROR') {
+        // Stop the entire sync pass — no point continuing
+        console.log('[Sync] Stopping sync — re-authentication needed');
+        results.needsAuth = true;
+        break;
+      } else if (success === true) {
         await dequeue(item.id);
         await markAsSynced(item.tableName, item.recordId);
         results.synced++;
@@ -116,9 +128,8 @@ export const runSync = async () => {
     console.log(`[Sync] Done — synced: ${results.synced}, failed: ${results.failed}`);
 
   } catch (err) {
-    // was referencing undefined 'error' variable before — fixed to 'err'
     console.error('[Sync] Sync pass failed:', err.message);
   }
 
   return results;
-};     
+};

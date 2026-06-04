@@ -11,6 +11,7 @@ const morgan       = require('morgan');
 const connectDB    = require('./config/database');
 const syncRoutes   = require('./routes/sync');
 const errorHandler = require('./middleware/errorHandler');
+const authRoutes = require('./routes/auth');
 
 const app  = express();
 const PORT = process.env.PORT || 5000;
@@ -40,6 +41,7 @@ if (process.env.NODE_ENV === 'development') {
 // ── Routes ──────────────────────────────────────────────────
 
 app.use('/api/sync', syncRoutes);
+app.use('/api/auth', authRoutes);
 
 // Root — quick sanity check
 app.get('/', (req, res) => {

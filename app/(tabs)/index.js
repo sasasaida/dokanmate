@@ -103,10 +103,13 @@ export default function DashboardScreen() {
           <Text style={styles.headerTitle}>DokanMate</Text>
           <Text style={styles.headerDate}>{today}</Text>
         </View>
-        <View style={styles.headerBadge}>
-          <View style={styles.onlineDot} />
-          <Text style={styles.headerBadgeText}>Offline</Text>
-        </View>
+        <TouchableOpacity
+          onPress={() => router.push('/settings')}
+          style={styles.settingsBtn}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="settings-outline" size={22} color={Colors.textSecondary} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -477,5 +480,12 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontWeight: '500',
     textAlign: 'center',
+  },
+  settingsBtn: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
 });

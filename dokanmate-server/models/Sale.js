@@ -13,6 +13,7 @@ const saleItemSchema = new mongoose.Schema({
 
 const saleSchema = new mongoose.Schema({
   _id:           { type: String, required: true },
+  shopId:        { type: String, required: true, index: true },
   customerId:    { type: String, default: null },
   totalAmount:   { type: Number, required: true },
   paymentMethod: { type: String, enum: ['cash', 'bkash', 'nagad'], default: 'cash' },
@@ -21,5 +22,8 @@ const saleSchema = new mongoose.Schema({
   createdAt:     { type: String, required: true },
   updatedAt:     { type: String, required: true },
 }, { _id: false });
+
+// Compound index — fast queries per shop
+saleSchema.index({ shopId: 1, isDeleted: 1 });
 
 module.exports = mongoose.model('Sale', saleSchema);
