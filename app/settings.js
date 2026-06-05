@@ -19,6 +19,7 @@ import { Input } from '../src/components/common/Input';
 import { Button } from '../src/components/common/Button';
 import { Colors } from '../src/constants/colors';
 import { useApp } from '../src/context/AppContext';
+import { clearDatabaseData } from '../src/database/db';
 
 export default function SettingsScreen() {
   const { showToast } = useApp();
@@ -173,6 +174,13 @@ export default function SettingsScreen() {
             onPress={handleReset}
             variant="danger"
             fullWidth
+            style={{ marginTop: 12 }}
+          />
+          <Button
+            title="Clear Local Data"
+            onPress={async () => {
+              await clearDatabaseData();
+            }}
             style={{ marginTop: 12 }}
           />
         </View>

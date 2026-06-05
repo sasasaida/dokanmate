@@ -21,3 +21,27 @@ export const getDatabase = () => {
   }
   return dbPromise;
 };
+
+/**
+ * Clear all table data while keeping the SQLite schema intact.
+ * This is useful for a full app reset without dropping tables.
+ */
+export const clearDatabaseData = async () => {
+  const db = await getDatabase();
+
+  await db.withExclusiveTransactionAsync(async (txn) => {
+    await txn.execAsync(`
+      DELETE FROM sale_items;
+      DELETE FROM transactions;
+      DELETE FROM expenses;
+      DELETE FROM customers;
+      DELETE FROM sales;
+      DELETE FROM products;
+      DELETE FROM shop;
+      DELETE FROM sync_queue;
+      DELETE FROM sqlite_sequence WHERE name = 'sync_queue';
+    `);
+  });
+
+  console.log('SQLite data cleared, schema preserved ✓');
+};
