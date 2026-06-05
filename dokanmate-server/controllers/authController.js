@@ -4,6 +4,11 @@
 
 const bcrypt               = require('bcryptjs');
 const Shop                 = require('../models/Shop');
+const Product              = require('../models/Product');
+const Customer             = require('../models/Customer');
+const Sale                 = require('../models/Sale');
+const Transaction          = require('../models/Transaction');
+const Expense              = require('../models/Expense');
 const { generateToken }    = require('../services/tokenService');
 
 // ── Register ───────────────────────────────────────────────
@@ -204,6 +209,14 @@ exports.recover = async (req, res) => {
     // Issue fresh JWT
     const token = generateToken(shop);
 
+    const [products, customers, sales, transactions, expenses] = await Promise.all([
+      Product.find({ shopId: shop._id }).lean(),
+      Customer.find({ shopId: shop._id }).lean(),
+      Sale.find({ shopId: shop._id }).lean(),
+      Transaction.find({ shopId: shop._id }).lean(),
+      Expense.find({ shopId: shop._id }).lean(),
+    ]);
+
     res.json({
       success: true,
       token,
@@ -213,6 +226,11 @@ exports.recover = async (req, res) => {
         phone:   shop.phone,
         address: shop.address,
       },
+      products,
+      customers,
+      sales,
+      transactions,
+      expenses,
     });
 
   } catch (err) {

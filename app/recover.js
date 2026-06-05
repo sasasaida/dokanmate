@@ -16,7 +16,8 @@ import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { recoverAccount, saveToken } from '../src/services/authService';
-import { registerShop, getShopData } from '../src/services/shopService';
+import { getShopData } from '../src/services/shopService';
+import { restoreShopBackup } from '../src/services/restoreService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Input } from '../src/components/common/Input';
 import { Button } from '../src/components/common/Button';
@@ -53,27 +54,48 @@ export default function RecoverScreen() {
       // Save JWT for sync
       await saveToken(result.token);
 
-      // Restore shop data locally
-      // This re-creates the local shop record with the original shopId
+      // Ensure the recovered shop identity is persisted locally.
       const existing = await getShopData();
       if (!existing || existing.id !== result.shop.id) {
-        // Save shop identity with the recovered shopId
         await AsyncStorage.setItem('@dokanmate_shop_id', result.shop.id);
-        await AsyncStorage.setItem(
-          '@dokanmate_shop_data',
-          JSON.stringify({
-            id:        result.shop.id,
-            name:      result.shop.name,
-            phone:     result.shop.phone,
-            address:   result.shop.address,
-            createdAt: new Date().toISOString(),
-          })
-        );
+      }
+
+      await AsyncStorage.setItem(
+        '@dokanmate_shop_data',
+        JSON.stringify({
+          id:        result.shop.id,
+          name:      result.shop.name,
+          phone:     result.shop.phone,
+          address:   result.shop.address,
+          pin,
+          createdAt: new Date().toISOString(),
+        })
+      );
+
+      const restoreResult = await restoreShopBackup({
+        shop: result.shop,
+        data: {
+          products: result.products ?? [],
+          customers: result.customers ?? [],
+          sales: result.sales ?? [],
+          transactions: result.transactions ?? [],
+          expenses: result.expenses ?? [],
+        },
+        pin,
+      });
+
+      let message;
+      if (restoreResult.status === 'local') {
+        message = 'Local shop data already exists on this device. No restore needed.';
+      } else if (restoreResult.status === 'restored') {
+        message = `Backup data was found and restored from the server. Your shop is ready to use.`;
+      } else {
+        message = 'No local or backup data exists for this shop yet. You can start adding records now.';
       }
 
       Alert.alert(
         'Account Recovered ✓',
-        `Welcome back, ${result.shop.name}!\n\nYour data will sync automatically when connected.`,
+        `Welcome back, ${result.shop.name}!\n\n${message}`,
         [{ text: 'Continue', onPress: () => router.replace('/(tabs)') }]
       );
 

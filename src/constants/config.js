@@ -5,7 +5,7 @@
 export const Config = {
   // Change this to your server IP when testing on a real device
   // For Android emulator: 10.0.2.2 maps to your computer's localhost
-  API_BASE_URL: 'https://2ee7-103-87-136-115.ngrok-free.app/api',
+   API_BASE_URL: 'http://192.168.0.23:5000/api',
 
   // How many items to show per page in lists
   PAGE_SIZE: 20,
