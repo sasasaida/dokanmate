@@ -12,7 +12,7 @@ import { Colors } from '../../../src/constants/colors';
 import { formatCurrency } from '../../../src/utils/formatters';
 
 export default function SaleSuccessScreen() {
-  const { totalAmount, paymentMethod, itemCount } = useLocalSearchParams();
+  const { totalAmount, paymentMethod, itemCount, customerName } = useLocalSearchParams();
 
   // Auto-return to sales screen after 3 seconds
   useEffect(() => {
@@ -25,6 +25,8 @@ export default function SaleSuccessScreen() {
   const paymentLabel =
     paymentMethod === 'bkash' ? 'bKash' :
     paymentMethod === 'nagad' ? 'Nagad' : 'Cash';
+  const isDue = paymentMethod === 'due';
+  const saleLabel = isDue ? 'Due recorded' : 'Sale Complete!';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -34,7 +36,7 @@ export default function SaleSuccessScreen() {
           <Ionicons name="checkmark" size={56} color="#FFFFFF" />
         </View>
 
-        <Text style={styles.title}>Sale Complete!</Text>
+        <Text style={styles.title}>{saleLabel}</Text>
         <Text style={styles.amount}>{formatCurrency(parseFloat(totalAmount))}</Text>
 
         <View style={styles.details}>
@@ -44,8 +46,14 @@ export default function SaleSuccessScreen() {
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Payment</Text>
-            <Text style={styles.detailValue}>{paymentLabel}</Text>
+            <Text style={styles.detailValue}>{isDue ? 'Due' : paymentLabel}</Text>
           </View>
+          {isDue && customerName ? (
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Customer</Text>
+              <Text style={styles.detailValue}>{customerName}</Text>
+            </View>
+          ) : null}
         </View>
 
         <Text style={styles.hint}>Returning to sales in 3s...</Text>

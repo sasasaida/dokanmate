@@ -131,7 +131,7 @@ export const getTotalOutstandingDues = async () => {
  * Record a new due (customer owes money).
  * type = 'due'
  */
-export const addDueTransaction = async ({ customerId, amount, note }) => {
+export const addDueTransaction = async ({ customerId, amount, note, saleId = null }) => {
   const db = await getDatabase();
   const id  = uuid.v4();
   const now = new Date().toISOString();
@@ -139,13 +139,13 @@ export const addDueTransaction = async ({ customerId, amount, note }) => {
 
   await db.runAsync(
     `INSERT INTO transactions
-       (id, shopId, customerId, type, amount, note, isReversed, reversedById, createdAt, isSynced)
-     VALUES (?, ?, ?, 'due', ?, ?, 0, null, ?, 0)`,
-    [id, shopId, customerId, amount, note?.trim() ?? null, now]
+       (id, shopId, customerId, saleId, type, amount, note, isReversed, reversedById, createdAt, isSynced)
+     VALUES (?, ?, ?, ?, 'due', ?, ?, 0, null, ?, 0)`,
+    [id, shopId, customerId, saleId, amount, note?.trim() ?? null, now]
   );
 
   enqueue('transactions', id, 'INSERT', {
-    id, shopId, customerId, type: 'due', amount, note, createdAt: now,
+    id, shopId, customerId, saleId, type: 'due', amount, note, createdAt: now,
   }).catch(() => {});
 
   // Recalculate the customer's running balance

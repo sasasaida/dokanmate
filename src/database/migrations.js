@@ -88,6 +88,7 @@ export const runMigrations = async () => {
           id TEXT PRIMARY KEY,
           shopId TEXT NOT NULL,
           customerId TEXT NOT NULL,
+          saleId TEXT,
           type TEXT NOT NULL,
           amount REAL NOT NULL DEFAULT 0,
           note TEXT,
@@ -126,6 +127,7 @@ export const runMigrations = async () => {
       await ensureColumn(db, 'sale_items', 'shopId', 'TEXT');
       await ensureColumn(db, 'customers', 'shopId', 'TEXT');
       await ensureColumn(db, 'transactions', 'shopId', 'TEXT');
+      await ensureColumn(db, 'transactions', 'saleId', 'TEXT');
       await ensureColumn(db, 'expenses', 'shopId', 'TEXT');
       await ensureColumn(db, 'sync_queue', 'shopId', 'TEXT');
 

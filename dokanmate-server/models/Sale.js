@@ -16,7 +16,7 @@ const saleSchema = new mongoose.Schema({
   shopId:        { type: String, required: true, index: true },
   customerId:    { type: String, default: null },
   totalAmount:   { type: Number, required: true },
-  paymentMethod: { type: String, enum: ['cash', 'bkash', 'nagad'], default: 'cash' },
+  paymentMethod: { type: String, enum: ['cash', 'bkash', 'nagad', 'due'], default: 'cash' },
   items:         [saleItemSchema],
   note:          { type: String, default: null },
   createdAt:     { type: String, required: true },

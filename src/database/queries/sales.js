@@ -7,6 +7,28 @@ import { requireShopId, getActiveShopId } from '../shopScope';
 import uuid from 'react-native-uuid';
 import { deductStock } from './products';
 import { enqueue } from './syncQueue';  // ADDED: queue for background sync
+import { addDueTransaction } from './customers';
+import { formatCurrency } from '../../utils/formatters';
+
+const buildItemSummary = (cartItems) =>
+  cartItems
+    .map((item) => `${item.name} x${item.quantity} (${formatCurrency(item.price * item.quantity)})`)
+    .join(', ');
+
+const buildSaleNote = (note, cartItems) => {
+  const itemSummary = buildItemSummary(cartItems);
+  const parts = [];
+
+  if (note?.trim()) {
+    parts.push(note.trim());
+  }
+
+  if (itemSummary) {
+    parts.push(`Items: ${itemSummary}`);
+  }
+
+  return parts.join(' | ');
+};
 
 // ---------- CREATE ----------
 
@@ -26,6 +48,12 @@ export const createSale = async ({ cartItems, paymentMethod, customerId, note })
     (sum, item) => sum + item.price * item.quantity,
     0
   );
+  const finalNote = buildSaleNote(note, cartItems);
+  const isDueSale = paymentMethod === 'due';
+
+  if (isDueSale && !customerId) {
+    throw new Error('Customer is required for due sales');
+  }
 
   // Save the sale header
   await db.runAsync(
@@ -38,7 +66,7 @@ export const createSale = async ({ cartItems, paymentMethod, customerId, note })
       customerId ?? null,
       totalAmount,
       paymentMethod,
-      note ?? null,
+      finalNote || null,
       now,
       now,
     ]
@@ -86,13 +114,25 @@ export const createSale = async ({ cartItems, paymentMethod, customerId, note })
     customerId,
     totalAmount,
     paymentMethod,
-    note,
+    note: finalNote,
     createdAt: now,
     updatedAt: now,
     items: saleItems,
   }).catch(() => {});
 
-  return { saleId, totalAmount };
+  let dueTransactionId = null;
+
+  if (isDueSale) {
+    const dueTransaction = await addDueTransaction({
+      customerId,
+      amount: totalAmount,
+      note: finalNote,
+      saleId,
+    });
+    dueTransactionId = dueTransaction.id;
+  }
+
+  return { saleId, totalAmount, dueTransactionId, note: finalNote };
 };
 
 // ---------- READ ----------

@@ -53,7 +53,7 @@ export const TransactionRow = ({ transaction, onReverse }) => {
             {formatDate(transaction.createdAt)} · {formatTime(transaction.createdAt)}
           </Text>
           {transaction.note ? (
-            <Text style={styles.note} numberOfLines={1}>
+            <Text style={styles.note} numberOfLines={2}>
               {transaction.note}
             </Text>
           ) : null}
