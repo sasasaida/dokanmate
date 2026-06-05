@@ -15,7 +15,7 @@ import {
   Platform,
 } from 'react-native';
 import { router } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../../../src/context/AppContext';
 import { CartItem } from '../../../src/components/sales/CartItem';
@@ -50,6 +50,9 @@ export default function CartScreen() {
   }, [loadCustomers]);
 
   const selectedCustomer = customers.find((customer) => customer.id === selectedCustomerId) ?? null;
+
+  const insets = useSafeAreaInsets();
+  const TAB_BAR_HEIGHT = 10 + insets.bottom;
 
   const filteredCustomers = useMemo(() => {
     if (!customerSearch.trim()) return customers;
@@ -243,7 +246,7 @@ export default function CartScreen() {
       </ScrollView>
 
       {/* Confirm button — fixed at bottom */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: 16 + TAB_BAR_HEIGHT }]}>
         <Button
           title={paymentMethod === 'due' ? `Record Due · ${formatCurrency(cartTotal)}` : `Confirm Sale · ${formatCurrency(cartTotal)}`}
           onPress={handleConfirmSale}
@@ -325,7 +328,7 @@ const styles = StyleSheet.create({
   },
   scroll: {
     padding: 16,
-    paddingBottom: 24,
+    paddingBottom: 140,
   },
   section: {
     backgroundColor: Colors.surface,

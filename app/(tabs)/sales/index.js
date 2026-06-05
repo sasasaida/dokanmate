@@ -50,6 +50,7 @@ export default function SalesScreen() {
   };
 
   const insets = useSafeAreaInsets();
+  const TAB_BAR_HEIGHT = 62 + insets.bottom;
 
   const handleProceedToCart = () => {
     if (cart.length === 0) return;
@@ -97,7 +98,7 @@ export default function SalesScreen() {
             }
           />
         }
-        contentContainerStyle={[styles.list, { paddingBottom: 100 + insets.bottom }]}
+        contentContainerStyle={[styles.list, { paddingBottom: 100 + TAB_BAR_HEIGHT }]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="none"
         showsVerticalScrollIndicator={false}
@@ -106,7 +107,7 @@ export default function SalesScreen() {
       {/* Sticky cart summary bar — only shows when cart has items */}
       {cart.length > 0 && (
         <TouchableOpacity
-          style={[styles.cartBar, { bottom: 16 + insets.bottom }]}
+          style={[styles.cartBar, { bottom: 16 + TAB_BAR_HEIGHT }]}
           onPress={handleProceedToCart}
           activeOpacity={0.9}
         >
@@ -131,6 +132,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  scroll: {
+    padding: 16,
+    paddingBottom: 140,
   },
   header: {
     flexDirection: 'row',
