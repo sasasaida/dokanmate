@@ -18,6 +18,7 @@ export const createSale = async ({ cartItems, paymentMethod, customerId, note })
   const db = await getDatabase();
   const now = new Date().toISOString();
   const saleId = uuid.v4();
+  const saleItems = [];
 
   const totalAmount = cartItems.reduce(
     (sum, item) => sum + item.price * item.quantity,
@@ -43,6 +44,16 @@ export const createSale = async ({ cartItems, paymentMethod, customerId, note })
   // Save each item and deduct stock
   for (const item of cartItems) {
     const itemId = uuid.v4();
+    saleItems.push({
+      _id: itemId,
+      productId: item.id,
+      productName: item.name,
+      quantity: item.quantity,
+      unitPrice: item.price,
+      totalPrice: item.price * item.quantity,
+      createdAt: now,
+    });
+
     await db.runAsync(
       `INSERT INTO sale_items
         (id, saleId, productId, productName, quantity, unitPrice, totalPrice, createdAt)
@@ -65,13 +76,15 @@ export const createSale = async ({ cartItems, paymentMethod, customerId, note })
 
   // Queue the sale header
   enqueue('sales', saleId, 'INSERT', {
-    id: saleId, customerId, totalAmount, paymentMethod, note, createdAt: now,
+    id: saleId,
+    customerId,
+    totalAmount,
+    paymentMethod,
+    note,
+    createdAt: now,
+    updatedAt: now,
+    items: saleItems,
   }).catch(() => {});
-
-  // Queue each sale item
-  for (const item of cartItems) {
-    enqueue('sale_items', item.itemId, 'INSERT', item).catch(() => {});
-  }
 
   return { saleId, totalAmount };
 };

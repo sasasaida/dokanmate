@@ -29,6 +29,26 @@ exports.syncProduct = async (req, res) => {
       });
     }
 
+    if (typeof data.stockDeduction === 'number') {
+      const updatedProduct = await Product.findOneAndUpdate(
+        { _id: recordId, shopId },
+        {
+          $inc: { stock: -data.stockDeduction },
+          $set: { updatedAt: data.updatedAt ?? new Date().toISOString() },
+        },
+        { returnDocument: 'after' }
+      );
+
+      if (!updatedProduct) {
+        return res.status(404).json({
+          success: false,
+          error: 'Product not found',
+        });
+      }
+
+      return res.json({ success: true, recordId });
+    }
+
     await upsertRecord(Product, recordId, shopId, data);
     res.json({ success: true, recordId });
   } catch (err) {
@@ -49,7 +69,18 @@ exports.syncSale = async (req, res) => {
       });
     }
 
-    await upsertRecord(Sale, recordId, shopId, data);
+    const saleData = {
+      ...data,
+      _id: recordId,
+      shopId,
+      items: Array.isArray(data.items) ? data.items : [],
+    };
+
+    await Sale.findByIdAndUpdate(
+      recordId,
+      saleData,
+      { upsert: true, returnDocument: 'after' }
+    );
     res.json({ success: true, recordId });
   } catch (err) {
     console.error('syncSale error:', err);
