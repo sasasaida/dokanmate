@@ -16,11 +16,12 @@ import {
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { registerShop, getShopId } from '../src/services/shopService';
+import { registerShop, getShopId, clearShopData } from '../src/services/shopService';
 import { registerWithBackend, saveToken } from '../src/services/authService';
 import { Input } from '../src/components/common/Input';
 import { Button } from '../src/components/common/Button';
 import { Colors } from '../src/constants/colors';
+import { clearDatabaseData } from '../src/database/db';
 
 export default function RegisterScreen() {
   const [shopName,   setShopName]   = useState('');
@@ -75,6 +76,13 @@ export default function RegisterScreen() {
         // Save JWT for future sync requests
         await saveToken(result.token);
       } catch (backendErr) {
+        if (backendErr.response?.status === 409) {
+          //await clearShopData();
+          //await clearDatabaseData();
+          setErrors({ general: 'This phone number is already registered.' });
+          return;
+        }
+
         // Backend unavailable — that's fine
         // App works fully offline, JWT will be obtained on next sync
         console.log('[Register] Backend unavailable — continuing offline');
