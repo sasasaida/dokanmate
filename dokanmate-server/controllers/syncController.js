@@ -17,6 +17,35 @@ const upsertRecord = async (Model, recordId, shopId, data) => {
   );
 };
 
+const recalculateCustomerDue = async (shopId, customerId) => {
+  const transactions = await Transaction.find({
+    shopId,
+    customerId,
+    isReversed: false,
+  }).lean();
+
+  const balance = transactions.reduce((sum, transaction) => {
+    if (transaction.type === 'due') {
+      return sum + transaction.amount;
+    }
+    if (transaction.type === 'payment') {
+      return sum - transaction.amount;
+    }
+    return sum;
+  }, 0);
+
+  await Customer.findOneAndUpdate(
+    { _id: customerId, shopId },
+    {
+      totalDue: Math.max(0, balance),
+      updatedAt: new Date().toISOString(),
+    },
+    { returnDocument: 'after' }
+  );
+
+  return Math.max(0, balance);
+};
+
 exports.syncProduct = async (req, res) => {
   try {
     const { operation, recordId, data } = req.body;
@@ -142,6 +171,11 @@ exports.syncTransaction = async (req, res) => {
     }
 
     await upsertRecord(Transaction, recordId, shopId, data);
+
+    if (data.customerId) {
+      await recalculateCustomerDue(shopId, data.customerId);
+    }
+
     res.json({ success: true, recordId });
   } catch (err) {
     console.error('syncTransaction error:', err);
