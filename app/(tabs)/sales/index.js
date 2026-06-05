@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useProducts } from '../../../src/hooks/useProducts';
 import { useApp } from '../../../src/context/AppContext';
 import { ProductPickerRow } from '../../../src/components/sales/ProductPickerRow';
@@ -49,13 +49,15 @@ export default function SalesScreen() {
     return item ? item.quantity : 0;
   };
 
+  const insets = useSafeAreaInsets();
+
   const handleProceedToCart = () => {
     if (cart.length === 0) return;
     router.push('/sales/cart');
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>New Sale</Text>
@@ -95,7 +97,7 @@ export default function SalesScreen() {
             }
           />
         }
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingBottom: 100 + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="none"
         showsVerticalScrollIndicator={false}
@@ -104,7 +106,7 @@ export default function SalesScreen() {
       {/* Sticky cart summary bar — only shows when cart has items */}
       {cart.length > 0 && (
         <TouchableOpacity
-          style={styles.cartBar}
+          style={[styles.cartBar, { bottom: 16 + insets.bottom }]}
           onPress={handleProceedToCart}
           activeOpacity={0.9}
         >
