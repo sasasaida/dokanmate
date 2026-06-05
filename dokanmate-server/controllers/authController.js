@@ -62,7 +62,7 @@ exports.register = async (req, res) => {
         pinHash,
         isActive: true,
       },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     );
 
     // Issue JWT
@@ -82,6 +82,72 @@ exports.register = async (req, res) => {
   } catch (err) {
     console.error('[Auth] Register error:', err);
     res.status(500).json({ success: false, error: 'Registration failed.' });
+  }
+};
+
+// ── Update Shop Details ────────────────────────────────────
+
+/**
+ * POST /api/auth/update-shop
+ * Body: { shopName, phone, address }
+ * Header: Authorization: Bearer <token>
+ *
+ * Updates the shop profile in MongoDB and returns the refreshed shop record.
+ */
+exports.updateShop = async (req, res) => {
+  try {
+    const { shopName, phone, address } = req.body;
+    const { shopId } = req.shop;
+
+    if (!shopName || !shopName.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: 'shopName is required',
+      });
+    }
+
+    const normalizedPhone = phone ? normalizePhone(phone) : null;
+
+    if (normalizedPhone) {
+      const existing = await Shop.findOne({ phone: normalizedPhone, _id: { $ne: shopId } });
+      if (existing) {
+        return res.status(409).json({
+          success: false,
+          error: 'Phone already registered. Use a different number.',
+          code: 'PHONE_EXISTS',
+        });
+      }
+    }
+
+    const shop = await Shop.findByIdAndUpdate(
+      shopId,
+      {
+        name: shopName.trim(),
+        phone: normalizedPhone,
+        address: address?.trim() ?? null,
+      },
+      { returnDocument: 'after' }
+    );
+
+    if (!shop) {
+      return res.status(404).json({
+        success: false,
+        error: 'Shop not found',
+      });
+    }
+
+    res.json({
+      success: true,
+      shop: {
+        id: shop._id,
+        name: shop.name,
+        phone: shop.phone,
+        address: shop.address,
+      },
+    });
+  } catch (err) {
+    console.error('[Auth] Update shop error:', err);
+    res.status(500).json({ success: false, error: 'Failed to update shop details.' });
   }
 };
 

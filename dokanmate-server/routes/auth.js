@@ -9,6 +9,7 @@ router.post('/register', controller.register);
 router.post('/recover',  controller.recover);
 
 // Protected route — requires valid token
+router.post('/update-shop', auth, controller.updateShop);
 router.post('/change-pin', auth, controller.changePin);
 
 module.exports = router;

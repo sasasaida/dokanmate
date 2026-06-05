@@ -60,6 +60,18 @@ export const recoverAccount = async ({ phone, pin }) => {
 };
 
 /**
+ * Update shop profile on the backend.
+ */
+export const updateShopProfileAPI = async ({ shopName, phone, address }) => {
+  const response = await client.post('/auth/update-shop', {
+    shopName,
+    phone,
+    address,
+  });
+  return response.data;
+};
+
+/**
  * Change PIN.
  */
 export const changePinAPI = async ({ phone, currentPin, newPin }) => {

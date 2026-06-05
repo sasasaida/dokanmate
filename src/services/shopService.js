@@ -6,6 +6,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import uuid from 'react-native-uuid';
 import { getDatabase } from '../database/db';
+import { updateShopProfileAPI } from './authService';
 
 const SHOP_ID_KEY   = '@dokanmate_shop_id';
 const SHOP_DATA_KEY = '@dokanmate_shop_data';
@@ -78,16 +79,40 @@ export const registerShop = async ({ name, phone, address, pin }) => {
 export const updateShop = async (shopId, { name, phone, address }) => {
   const db  = await getDatabase();
   const now = new Date().toISOString();
+  const trimmedPhone = phone?.trim();
+  const trimmedAddress = address?.trim();
 
   await db.runAsync(
     `UPDATE shop SET name = ?, phone = ?, address = ?, updatedAt = ?
      WHERE id = ?`,
-    [name.trim(), phone?.trim() ?? null, address?.trim() ?? null, now, shopId]
+    [name.trim(), trimmedPhone || null, trimmedAddress || null, now, shopId]
   );
 
   const current  = await getShopData();
-  const updated  = { ...current, name: name.trim(), phone, address };
+  const updated  = {
+    ...current,
+    name: name.trim(),
+    phone: trimmedPhone || null,
+    address: trimmedAddress || null,
+  };
   await AsyncStorage.setItem(SHOP_DATA_KEY, JSON.stringify(updated));
+
+  const result = await updateShopProfileAPI({
+    shopName: name.trim(),
+    phone: trimmedPhone || null,
+    address: trimmedAddress || null,
+  });
+
+  if (result?.shop) {
+    const synced = {
+      ...updated,
+      id: result.shop.id ?? updated.id,
+      name: result.shop.name ?? updated.name,
+      phone: result.shop.phone ?? updated.phone,
+      address: result.shop.address ?? updated.address,
+    };
+    await AsyncStorage.setItem(SHOP_DATA_KEY, JSON.stringify(synced));
+  }
 };
 
 /**

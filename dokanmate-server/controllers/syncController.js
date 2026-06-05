@@ -13,7 +13,7 @@ const upsertRecord = async (Model, recordId, shopId, data) => {
   await Model.findByIdAndUpdate(
     recordId,
     { ...data, _id: recordId, shopId },
-    { upsert: true, new: true }
+    { upsert: true, returnDocument: 'after' }
   );
 };
 

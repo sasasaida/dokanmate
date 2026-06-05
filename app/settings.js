@@ -47,7 +47,12 @@ export default function SettingsScreen() {
     setSaving(true);
     try {
       await updateShop(shop.id, { name, phone, address });
-      setShop((prev) => ({ ...prev, name, phone, address }));
+      setShop((prev) => ({
+        ...prev,
+        name: name.trim(),
+        phone: phone.trim(),
+        address: address.trim(),
+      }));
       setEditing(false);
       showToast('Shop details updated', 'success');
     } catch (err) {
