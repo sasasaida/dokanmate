@@ -100,7 +100,9 @@ export default function DashboardScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>DokanMate</Text>
+          <TouchableOpacity onPress={() => router.push('/settings')} activeOpacity={0.7} hitSlop={{top:8,bottom:8,left:8,right:8}}>
+            <Text style={styles.headerTitle}>DokanMate</Text>
+          </TouchableOpacity>
           <Text style={styles.headerDate}>{today}</Text>
         </View>
         <TouchableOpacity
