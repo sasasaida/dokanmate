@@ -3,6 +3,7 @@
 // Transactions are immutable — we never delete them, only reverse.
 
 import { getDatabase } from '../db';
+import { requireShopId, getActiveShopId } from '../shopScope';
 import uuid from 'react-native-uuid';
 import { enqueue } from './syncQueue';
 
@@ -16,20 +17,21 @@ export const createCustomer = async ({ name, phone, note }) => {
   const db = await getDatabase();
   const id  = uuid.v4();
   const now = new Date().toISOString();
+  const shopId = await requireShopId();
 
   await db.runAsync(
     `INSERT INTO customers
-       (id, name, phone, totalDue, note, createdAt, updatedAt, isSynced)
-     VALUES (?, ?, ?, 0, ?, ?, ?, 0)`,
-    [id, name.trim(), phone?.trim() ?? null, note?.trim() ?? null, now, now]
+       (id, shopId, name, phone, totalDue, note, createdAt, updatedAt, isSynced)
+     VALUES (?, ?, ?, ?, 0, ?, ?, ?, 0)`,
+    [id, shopId, name.trim(), phone?.trim() ?? null, note?.trim() ?? null, now, now]
   );
 
-  enqueue('customers', id, 'INSERT', { id, name, phone, note, totalDue: 0, createdAt: now })
+  enqueue('customers', id, 'INSERT', { id, shopId, name, phone, note, totalDue: 0, createdAt: now })
     .catch(() => {});
 
   return { id, name: name.trim(), phone: phone?.trim() ?? null,
            totalDue: 0, note: note?.trim() ?? null,
-           createdAt: now, updatedAt: now, isSynced: 0 };
+           createdAt: now, updatedAt: now, isSynced: 0, shopId };
 };
 
 /**
@@ -38,8 +40,11 @@ export const createCustomer = async ({ name, phone, note }) => {
  */
 export const getAllCustomers = async () => {
   const db = await getDatabase();
+  const shopId = await getActiveShopId();
+  if (!shopId) return [];
   return await db.getAllAsync(
-    `SELECT * FROM customers ORDER BY totalDue DESC, name ASC`
+    `SELECT * FROM customers WHERE shopId = ? ORDER BY totalDue DESC, name ASC`,
+    [shopId]
   );
 };
 
@@ -48,8 +53,10 @@ export const getAllCustomers = async () => {
  */
 export const getCustomerById = async (id) => {
   const db = await getDatabase();
+  const shopId = await getActiveShopId();
+  if (!shopId) return null;
   return await db.getFirstAsync(
-    `SELECT * FROM customers WHERE id = ?`, [id]
+    `SELECT * FROM customers WHERE id = ? AND shopId = ?`, [id, shopId]
   );
 };
 
@@ -59,12 +66,13 @@ export const getCustomerById = async (id) => {
 export const updateCustomer = async (id, { name, phone, note }) => {
   const db = await getDatabase();
   const now = new Date().toISOString();
+  const shopId = await requireShopId();
 
   await db.runAsync(
     `UPDATE customers
      SET name = ?, phone = ?, note = ?, updatedAt = ?, isSynced = 0
-     WHERE id = ?`,
-    [name.trim(), phone?.trim() ?? null, note?.trim() ?? null, now, id]
+     WHERE id = ? AND shopId = ?`,
+    [name.trim(), phone?.trim() ?? null, note?.trim() ?? null, now, id, shopId]
   );
 };
 
@@ -76,6 +84,7 @@ export const updateCustomer = async (id, { name, phone, note }) => {
 export const recalculateCustomerDue = async (customerId) => {
   const db = await getDatabase();
   const now = new Date().toISOString();
+  const shopId = await requireShopId();
 
   // Sum all active (non-reversed) transactions
   // due transactions increase the balance, payments decrease it
@@ -85,8 +94,8 @@ export const recalculateCustomerDue = async (customerId) => {
        COALESCE(SUM(CASE WHEN type = 'payment' THEN amount ELSE 0 END), 0)
        AS balance
      FROM transactions
-     WHERE customerId = ? AND isReversed = 0`,
-    [customerId]
+     WHERE customerId = ? AND shopId = ? AND isReversed = 0`,
+    [customerId, shopId]
   );
 
   const balance = result?.balance ?? 0;
@@ -94,8 +103,8 @@ export const recalculateCustomerDue = async (customerId) => {
   await db.runAsync(
     `UPDATE customers
      SET totalDue = ?, updatedAt = ?, isSynced = 0
-     WHERE id = ?`,
-    [Math.max(0, balance), now, customerId]
+     WHERE id = ? AND shopId = ?`,
+    [Math.max(0, balance), now, customerId, shopId]
   );
 
   return Math.max(0, balance);
@@ -107,8 +116,11 @@ export const recalculateCustomerDue = async (customerId) => {
  */
 export const getTotalOutstandingDues = async () => {
   const db = await getDatabase();
+  const shopId = await getActiveShopId();
+  if (!shopId) return 0;
   const result = await db.getFirstAsync(
-    `SELECT COALESCE(SUM(totalDue), 0) AS total FROM customers`
+    `SELECT COALESCE(SUM(totalDue), 0) AS total FROM customers WHERE shopId = ?`,
+    [shopId]
   );
   return result?.total ?? 0;
 };
@@ -123,16 +135,17 @@ export const addDueTransaction = async ({ customerId, amount, note }) => {
   const db = await getDatabase();
   const id  = uuid.v4();
   const now = new Date().toISOString();
+  const shopId = await requireShopId();
 
   await db.runAsync(
     `INSERT INTO transactions
-       (id, customerId, type, amount, note, isReversed, reversedById, createdAt, isSynced)
-     VALUES (?, ?, 'due', ?, ?, 0, null, ?, 0)`,
-    [id, customerId, amount, note?.trim() ?? null, now]
+       (id, shopId, customerId, type, amount, note, isReversed, reversedById, createdAt, isSynced)
+     VALUES (?, ?, ?, 'due', ?, ?, 0, null, ?, 0)`,
+    [id, shopId, customerId, amount, note?.trim() ?? null, now]
   );
 
   enqueue('transactions', id, 'INSERT', {
-    id, customerId, type: 'due', amount, note, createdAt: now,
+    id, shopId, customerId, type: 'due', amount, note, createdAt: now,
   }).catch(() => {});
 
   // Recalculate the customer's running balance
@@ -148,16 +161,17 @@ export const addPaymentTransaction = async ({ customerId, amount, note }) => {
   const db = await getDatabase();
   const id  = uuid.v4();
   const now = new Date().toISOString();
+  const shopId = await requireShopId();
 
   await db.runAsync(
     `INSERT INTO transactions
-       (id, customerId, type, amount, note, isReversed, reversedById, createdAt, isSynced)
-     VALUES (?, ?, 'payment', ?, ?, 0, null, ?, 0)`,
-    [id, customerId, amount, note?.trim() ?? null, now]
+       (id, shopId, customerId, type, amount, note, isReversed, reversedById, createdAt, isSynced)
+     VALUES (?, ?, ?, 'payment', ?, ?, 0, null, ?, 0)`,
+    [id, shopId, customerId, amount, note?.trim() ?? null, now]
   );
 
   enqueue('transactions', id, 'INSERT', {
-    id, customerId, type: 'payment', amount, note, createdAt: now,
+    id, shopId, customerId, type: 'payment', amount, note, createdAt: now,
   }).catch(() => {});
 
   const newBalance = await recalculateCustomerDue(customerId);
@@ -172,13 +186,14 @@ export const addPaymentTransaction = async ({ customerId, amount, note }) => {
 export const reverseTransaction = async ({ transactionId, customerId }) => {
   const db  = await getDatabase();
   const now = new Date().toISOString();
+  const shopId = await requireShopId();
 
   // Mark original as reversed
   await db.runAsync(
     `UPDATE transactions
      SET isReversed = 1
-     WHERE id = ?`,
-    [transactionId]
+     WHERE id = ? AND shopId = ?`,
+    [transactionId, shopId]
   );
 
   const newBalance = await recalculateCustomerDue(customerId);
@@ -191,10 +206,12 @@ export const reverseTransaction = async ({ transactionId, customerId }) => {
  */
 export const getCustomerTransactions = async (customerId) => {
   const db = await getDatabase();
+  const shopId = await getActiveShopId();
+  if (!shopId) return [];
   return await db.getAllAsync(
     `SELECT * FROM transactions
-     WHERE customerId = ?
+     WHERE customerId = ? AND shopId = ?
      ORDER BY createdAt DESC`,
-    [customerId]
+    [customerId, shopId]
   );
 };

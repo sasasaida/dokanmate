@@ -3,6 +3,7 @@
 // A sale has one header row (sales) and N item rows (sale_items).
 
 import { getDatabase } from '../db';
+import { requireShopId, getActiveShopId } from '../shopScope';
 import uuid from 'react-native-uuid';
 import { deductStock } from './products';
 import { enqueue } from './syncQueue';  // ADDED: queue for background sync
@@ -19,6 +20,7 @@ export const createSale = async ({ cartItems, paymentMethod, customerId, note })
   const now = new Date().toISOString();
   const saleId = uuid.v4();
   const saleItems = [];
+  const shopId = await requireShopId();
 
   const totalAmount = cartItems.reduce(
     (sum, item) => sum + item.price * item.quantity,
@@ -28,10 +30,11 @@ export const createSale = async ({ cartItems, paymentMethod, customerId, note })
   // Save the sale header
   await db.runAsync(
     `INSERT INTO sales
-      (id, customerId, totalAmount, paymentMethod, note, createdAt, updatedAt, isSynced)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
+      (id, shopId, customerId, totalAmount, paymentMethod, note, createdAt, updatedAt, isSynced)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`,
     [
       saleId,
+      shopId,
       customerId ?? null,
       totalAmount,
       paymentMethod,
@@ -52,15 +55,17 @@ export const createSale = async ({ cartItems, paymentMethod, customerId, note })
       unitPrice: item.price,
       totalPrice: item.price * item.quantity,
       createdAt: now,
+      shopId,
     });
 
     await db.runAsync(
       `INSERT INTO sale_items
-        (id, saleId, productId, productName, quantity, unitPrice, totalPrice, createdAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        (id, saleId, shopId, productId, productName, quantity, unitPrice, totalPrice, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         itemId,
         saleId,
+        shopId,
         item.id,
         item.name,
         item.quantity,
@@ -77,6 +82,7 @@ export const createSale = async ({ cartItems, paymentMethod, customerId, note })
   // Queue the sale header
   enqueue('sales', saleId, 'INSERT', {
     id: saleId,
+    shopId,
     customerId,
     totalAmount,
     paymentMethod,
@@ -97,8 +103,11 @@ export const createSale = async ({ cartItems, paymentMethod, customerId, note })
  */
 export const getAllSales = async () => {
   const db = await getDatabase();
+  const shopId = await getActiveShopId();
+  if (!shopId) return [];
   return await db.getAllAsync(
-    `SELECT * FROM sales ORDER BY createdAt DESC`
+    `SELECT * FROM sales WHERE shopId = ? ORDER BY createdAt DESC`,
+    [shopId]
   );
 };
 
@@ -109,12 +118,14 @@ export const getTodaySales = async () => {
   const db = await getDatabase();
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
+  const shopId = await getActiveShopId();
+  if (!shopId) return [];
 
   return await db.getAllAsync(
     `SELECT * FROM sales
-     WHERE createdAt >= ?
+     WHERE shopId = ? AND createdAt >= ?
      ORDER BY createdAt DESC`,
-    [todayStart.toISOString()]
+    [shopId, todayStart.toISOString()]
   );
 };
 
@@ -124,9 +135,11 @@ export const getTodaySales = async () => {
  */
 export const getSaleItems = async (saleId) => {
   const db = await getDatabase();
+  const shopId = await getActiveShopId();
+  if (!shopId) return [];
   return await db.getAllAsync(
-    `SELECT * FROM sale_items WHERE saleId = ?`,
-    [saleId]
+    `SELECT * FROM sale_items WHERE saleId = ? AND shopId = ?`,
+    [saleId, shopId]
   );
 };
 
@@ -137,12 +150,14 @@ export const getTodayRevenue = async () => {
   const db = await getDatabase();
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
+  const shopId = await getActiveShopId();
+  if (!shopId) return 0;
 
   const result = await db.getFirstAsync(
     `SELECT COALESCE(SUM(totalAmount), 0) as total
      FROM sales
-     WHERE createdAt >= ?`,
-    [todayStart.toISOString()]
+     WHERE shopId = ? AND createdAt >= ?`,
+    [shopId, todayStart.toISOString()]
   );
   return result?.total ?? 0;
 };

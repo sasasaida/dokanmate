@@ -3,6 +3,7 @@
 // Every record that needs to reach the server goes through here.
 
 import { getDatabase } from '../db';
+import { getActiveShopId, requireShopId } from '../shopScope';
 
 /**
  * Add a record to the sync queue.
@@ -16,12 +17,13 @@ import { getDatabase } from '../db';
 export const enqueue = async (tableName, recordId, operation, payload) => {
   const db  = await getDatabase();
   const now = new Date().toISOString();
+  const shopId = await requireShopId();
 
   await db.runAsync(
     `INSERT INTO sync_queue
-       (tableName, recordId, operation, payload, retryCount, createdAt)
-     VALUES (?, ?, ?, ?, 0, ?)`,
-    [tableName, recordId, operation, JSON.stringify(payload), now]
+       (shopId, tableName, recordId, operation, payload, retryCount, createdAt)
+     VALUES (?, ?, ?, ?, ?, 0, ?)`,
+    [shopId, tableName, recordId, operation, JSON.stringify(payload), now]
   );
   console.log('[Queue] Enqueued:', tableName, operation, recordId);
 };
@@ -32,10 +34,13 @@ export const enqueue = async (tableName, recordId, operation, payload) => {
  */
 export const getPendingQueue = async () => {
   const db = await getDatabase();
+  const shopId = await getActiveShopId();
+  if (!shopId) return [];
   return await db.getAllAsync(
     `SELECT * FROM sync_queue
-     WHERE retryCount < 3
-     ORDER BY createdAt ASC`
+     WHERE shopId = ? AND retryCount < 3
+     ORDER BY createdAt ASC`,
+    [shopId]
   );
 };
 
@@ -79,8 +84,11 @@ export const clearSyncedItems = async (ids) => {
  */
 export const getPendingCount = async () => {
   const db    = await getDatabase();
+  const shopId = await getActiveShopId();
+  if (!shopId) return 0;
   const result = await db.getFirstAsync(
-    `SELECT COUNT(*) as count FROM sync_queue WHERE retryCount < 3`
+    `SELECT COUNT(*) as count FROM sync_queue WHERE shopId = ? AND retryCount < 3`,
+    [shopId]
   );
   return result?.count ?? 0;
 };

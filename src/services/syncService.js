@@ -4,6 +4,7 @@
 // Never blocks the UI — runs entirely in the background.
 
 import client from '../api/client';
+import { getActiveShopId } from '../database/shopScope';
 import {
   getPendingQueue,
   dequeue,
@@ -39,6 +40,7 @@ const uploadItem = async (queueItem) => {
     await client.post(endpoint, {
       operation: queueItem.operation,  // INSERT | UPDATE | DELETE
       recordId:  queueItem.recordId,
+      shopId:    queueItem.shopId,
       data:      payload,
     });
 
@@ -67,9 +69,11 @@ const markAsSynced = async (tableName, recordId) => {
 
   try {
     const db = await getDatabase();
+    const shopId = await getActiveShopId();
+    if (!shopId) return;
     await db.runAsync(
-      `UPDATE ${tableName} SET isSynced = 1 WHERE id = ?`,
-      [recordId]
+      `UPDATE ${tableName} SET isSynced = 1 WHERE id = ? AND shopId = ?`,
+      [recordId, shopId]
     );
   } catch (err) {
     // Non-critical — the record is synced on server, just not marked locally

@@ -4,6 +4,7 @@
 // Every function is async and returns plain JS objects.
 
 import { getDatabase } from '../db';
+import { requireShopId, getActiveShopId } from '../shopScope';
 import uuid from 'react-native-uuid';
 import { enqueue } from './syncQueue';  // ADDED: queue for background sync
 
@@ -17,13 +18,15 @@ export const createProduct = async (productData) => {
   const db = await getDatabase();
   const now = new Date().toISOString();
   const id = uuid.v4();
+  const shopId = await requireShopId();
 
   await db.runAsync(
     `INSERT INTO products
-      (id, name, price, stock, category, expiryDate, isDeleted, createdAt, updatedAt, isSynced)
-     VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, 0)`,
+      (id, shopId, name, price, stock, category, expiryDate, isDeleted, createdAt, updatedAt, isSynced)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, 0)`,
     [
       id,
+      shopId,
       productData.name.trim(),
       productData.price,
       productData.stock ?? 0,
@@ -36,6 +39,7 @@ export const createProduct = async (productData) => {
 
   const newProduct = { 
     id, 
+    shopId,
     ...productData, 
     isDeleted: 0, 
     createdAt: now, 
@@ -58,10 +62,13 @@ export const createProduct = async (productData) => {
  */
 export const getAllProducts = async () => {
   const db = await getDatabase();
+  const shopId = await getActiveShopId();
+  if (!shopId) return [];
   return await db.getAllAsync(
     `SELECT * FROM products
-     WHERE isDeleted = 0
+     WHERE shopId = ? AND isDeleted = 0
      ORDER BY name ASC`
+    , [shopId]
   );
 };
 
@@ -71,12 +78,14 @@ export const getAllProducts = async () => {
  */
 export const searchProducts = async (query) => {
   const db = await getDatabase();
+  const shopId = await getActiveShopId();
+  if (!shopId) return [];
   return await db.getAllAsync(
     `SELECT * FROM products
-     WHERE isDeleted = 0
+     WHERE shopId = ? AND isDeleted = 0
        AND name LIKE ?
      ORDER BY name ASC`,
-    [`%${query}%`]
+    [shopId, `%${query}%`]
   );
 };
 
@@ -85,9 +94,11 @@ export const searchProducts = async (query) => {
  */
 export const getProductById = async (id) => {
   const db = await getDatabase();
+  const shopId = await getActiveShopId();
+  if (!shopId) return null;
   return await db.getFirstAsync(
-    `SELECT * FROM products WHERE id = ?`,
-    [id]
+    `SELECT * FROM products WHERE id = ? AND shopId = ?`,
+    [id, shopId]
   );
 };
 
@@ -97,12 +108,14 @@ export const getProductById = async (id) => {
  */
 export const getLowStockProducts = async (threshold = 5) => {
   const db = await getDatabase();
+  const shopId = await getActiveShopId();
+  if (!shopId) return [];
   return await db.getAllAsync(
     `SELECT * FROM products
-     WHERE isDeleted = 0
+     WHERE shopId = ? AND isDeleted = 0
        AND stock <= ?
      ORDER BY stock ASC`,
-    [threshold]
+    [shopId, threshold]
   );
 };
 
@@ -115,6 +128,7 @@ export const getLowStockProducts = async (threshold = 5) => {
 export const updateProduct = async (id, productData) => {
   const db = await getDatabase();
   const now = new Date().toISOString();
+  const shopId = await requireShopId();
 
   await db.runAsync(
     `UPDATE products SET
@@ -125,7 +139,7 @@ export const updateProduct = async (id, productData) => {
        expiryDate = ?,
        updatedAt  = ?,
        isSynced   = 0
-     WHERE id = ?`,
+     WHERE id = ? AND shopId = ?`,
     [
       productData.name.trim(),
       productData.price,
@@ -134,11 +148,12 @@ export const updateProduct = async (id, productData) => {
       productData.expiryDate ?? null,
       now,
       id,
+      shopId,
     ]
   );
 
   // Queue for background sync — non-blocking
-  enqueue('products', id, 'UPDATE', { id, ...productData, updatedAt: now })
+  enqueue('products', id, 'UPDATE', { id, shopId, ...productData, updatedAt: now })
     .catch(() => {});
 };
 
@@ -149,19 +164,21 @@ export const updateProduct = async (id, productData) => {
 export const deductStock = async (productId, quantity) => {
   const db = await getDatabase();
   const now = new Date().toISOString();
+  const shopId = await requireShopId();
 
   await db.runAsync(
     `UPDATE products SET
        stock     = MAX(0, stock - ?),
        updatedAt = ?,
        isSynced  = 0
-     WHERE id = ?`,
-    [quantity, now, productId]
+     WHERE id = ? AND shopId = ?`,
+    [quantity, now, productId, shopId]
   );
   
   // Queue stock deduction for sync
   enqueue('products', productId, 'UPDATE', { 
     id: productId, 
+    shopId,
     stockDeduction: quantity, 
     updatedAt: now 
   }).catch(() => {});
@@ -176,16 +193,17 @@ export const deductStock = async (productId, quantity) => {
 export const deleteProduct = async (id) => {
   const db = await getDatabase();
   const now = new Date().toISOString();
+  const shopId = await requireShopId();
 
   await db.runAsync(
     `UPDATE products SET
        isDeleted = 1,
        updatedAt = ?,
        isSynced  = 0
-     WHERE id = ?`,
-    [now, id]
+     WHERE id = ? AND shopId = ?`,
+    [now, id, shopId]
   );
 
   // Queue for background sync — non-blocking
-  enqueue('products', id, 'DELETE', { id, deletedAt: now }).catch(() => {});
+  enqueue('products', id, 'DELETE', { id, shopId, deletedAt: now }).catch(() => {});
 };
