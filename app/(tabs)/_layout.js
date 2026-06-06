@@ -82,6 +82,10 @@ export default function TabLayout() {
         name="sales/success"
         options={{ href: null }} // Hides from tab bar
       />
+      <Tabs.Screen
+        name="sales/[id]"
+        options={{ href: null }} // Hides from tab bar
+      />
 
       <Tabs.Screen
         name="dues/index"

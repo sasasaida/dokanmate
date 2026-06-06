@@ -210,6 +210,17 @@ export default function CustomerDetailScreen() {
     );
   };
 
+  const handleTransactionPress = (transaction) => {
+    if (transaction.saleId) {
+      router.push({
+        pathname: '/sales/[id]',
+        params: { id: transaction.saleId }
+      });
+    } else {
+      showToast('This is a manual transaction', 'info');
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -287,10 +298,14 @@ export default function CustomerDetailScreen() {
         data={transactions}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <TransactionRow
-            transaction={item}
-            onReverse={() => handleReverse(item)}
-          />
+          <TouchableOpacity 
+              onPress={() => handleTransactionPress(item)}
+              activeOpacity={0.7}>
+            <TransactionRow
+              transaction={item}
+              onReverse={() => handleReverse(item)}
+            />
+          </TouchableOpacity>
         )}
         ListHeaderComponent={
           <Text style={styles.historyTitle}>
