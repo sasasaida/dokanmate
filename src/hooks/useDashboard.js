@@ -4,7 +4,7 @@
 
 import { useState, useCallback } from 'react';
 import { getTodayRevenue, getTodaySales } from '../database/queries/sales';
-import { getSalesByDateRange } from '../database/queries/saleDetails';
+import { getSalesByDateRange, getTopSellingProducts } from '../database/queries/saleDetails';
 import { getTodayExpenseTotal, getExpensesByCategory } from '../database/queries/expenses';
 import { getTotalOutstandingDues } from '../database/queries/customers';
 import { getLowStockProducts } from '../database/queries/products';
@@ -34,6 +34,7 @@ export const useDashboard = () => {
         lowStockItems,
         expensesByCategory,
         salesByDateRange,
+        bestSellingProducts,
       ] = await Promise.all([
         getTodayRevenue(),
         getTodaySales(),
@@ -42,6 +43,7 @@ export const useDashboard = () => {
         getLowStockProducts(5),
         getExpensesByCategory(startDate, endDate),
         getSalesByDateRange(startDate, endDate),
+        getTopSellingProducts(7),
       ]);
 
       setData({
@@ -53,6 +55,7 @@ export const useDashboard = () => {
         lowStockItems,
         expensesByCategory,
         salesByDateRange,
+        bestSellingProducts,
       });
     } catch (err) {
       console.error('Failed to load dashboard:', err);

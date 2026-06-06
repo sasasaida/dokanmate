@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useDashboard } from '../../src/hooks/useDashboard';
 import { ExpenseAnalyticsCard } from '../../src/components/common/ExpenseAnalyticsCard';
 import { SalesAnalyticsCard } from '../../src/components/common/SalesAnalyticsCard';
+import { BestSellingProductsChart } from '../../src/components/common/BestSellingProductsChart';
 import { Colors } from '../../src/constants/colors';
 import { formatCurrency, formatDate } from '../../src/utils/formatters';
 
@@ -186,6 +187,7 @@ export default function DashboardScreen() {
 
         <ExpenseAnalyticsCard data={data?.expensesByCategory ?? []} />
         <SalesAnalyticsCard data={data?.salesByDateRange || []} />
+        <BestSellingProductsChart data={data?.bestSellingProducts ?? []} />
 
         {/* Low stock alerts */}
         {data?.lowStockItems?.length > 0 && (

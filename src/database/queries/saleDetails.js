@@ -52,3 +52,27 @@ export const getSalesByDateRange = async (startDate, endDate) => {
     [shopId, startDate, endDate]
   );
 };
+
+export const getTopSellingProducts = async (limit = 5) => {
+  const db = await getDatabase();
+  const shopId = await getActiveShopId();
+
+  if (!shopId) return [];
+
+  return await db.getAllAsync(
+    `
+    SELECT 
+      p.id,
+      p.name,
+      COALESCE(SUM(si.quantity), 0) AS totalSold,
+      COALESCE(SUM(si.quantity * si.unitPrice), 0) AS revenue
+    FROM sale_items si
+    JOIN products p ON p.id = si.productId
+    WHERE si.shopId = ?
+    GROUP BY si.productId, p.id, p.name
+    ORDER BY totalSold DESC
+    LIMIT ?
+    `,
+    [shopId, limit]
+  );
+};
