@@ -17,6 +17,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useDashboard } from '../../src/hooks/useDashboard';
+import { ExpenseAnalyticsCard } from '../../src/components/common/ExpenseAnalyticsCard';
 import { Colors } from '../../src/constants/colors';
 import { formatCurrency, formatDate } from '../../src/utils/formatters';
 
@@ -171,6 +172,8 @@ export default function DashboardScreen() {
             onPress={() => router.push('/dues')}
           />
         </View>
+
+        <ExpenseAnalyticsCard data={data?.expensesByCategory ?? []} />
 
         {/* Low stock alerts */}
         {data?.lowStockItems?.length > 0 && (
