@@ -29,3 +29,26 @@ export const getSaleFullDetails = async (saleId) => {
     items,
   };
 };
+
+
+export const getSalesByDateRange = async (startDate, endDate) => {
+  const db = await getDatabase();
+  const shopId = await getActiveShopId();
+
+  if (!shopId) return [];
+
+  return await db.getAllAsync(
+    `
+    SELECT 
+      DATE(createdAt) AS date,
+      COALESCE(SUM(totalAmount), 0) AS revenue,
+      COUNT(*) AS count
+    FROM sales
+    WHERE shopId = ?
+      AND DATE(createdAt) BETWEEN ? AND ?
+    GROUP BY DATE(createdAt)
+    ORDER BY date ASC
+    `,
+    [shopId, startDate, endDate]
+  );
+};

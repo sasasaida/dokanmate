@@ -19,6 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useDashboard } from '../../src/hooks/useDashboard';
 import { ExpenseAnalyticsCard } from '../../src/components/common/ExpenseAnalyticsCard';
+import { SalesAnalyticsCard } from '../../src/components/common/SalesAnalyticsCard';
 import { Colors } from '../../src/constants/colors';
 import { formatCurrency, formatDate } from '../../src/utils/formatters';
 
@@ -168,7 +169,7 @@ export default function DashboardScreen() {
             onPress={() => router.push('/sales')}
           />
           <StatCard
-            label="Expenses"
+            label="Expenses Today"
             value={data ? formatCurrency(data.todayExpenses) : '৳0'}
             icon="trending-down-outline"
             color={Colors.danger}
@@ -184,6 +185,7 @@ export default function DashboardScreen() {
         </View>
 
         <ExpenseAnalyticsCard data={data?.expensesByCategory ?? []} />
+        <SalesAnalyticsCard data={data?.salesByDateRange || []} />
 
         {/* Low stock alerts */}
         {data?.lowStockItems?.length > 0 && (
