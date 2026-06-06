@@ -240,7 +240,7 @@ export default function CustomerDetailScreen() {
   const hasDue = customer.totalDue > 0;
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {/* Customer summary card */}
       <View style={styles.summaryCard}>
         {/* Avatar */}

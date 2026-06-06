@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -112,7 +113,10 @@ export default function RegisterScreen() {
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.logoBox}>
-              <Ionicons name="storefront-outline" size={44} color={Colors.primary} />
+              <Image
+                source={require('../assets/logo2.png')}
+                style={styles.logo}
+              />
             </View>
             <Text style={styles.appName}>DokanMate</Text>
             <Text style={styles.tagline}>
@@ -237,6 +241,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#E8F5E9', justifyContent: 'center',
     alignItems: 'center', marginBottom: 14,
     borderWidth: 1, borderColor: Colors.border,
+  },
+  logo: {
+    width: 70,
+    height: 70,
+    resizeMode: 'contain',
   },
   appName:  { fontSize: 30, fontWeight: '800', color: Colors.primary, marginBottom: 6 },
   tagline:  { fontSize: 14, color: Colors.textMuted, textAlign: 'center' },
