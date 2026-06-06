@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -102,9 +103,18 @@ export default function DashboardScreen() {
       <View style={styles.header}>
         <View>
           <TouchableOpacity onPress={() => router.push('/settings')} activeOpacity={0.7} hitSlop={{top:8,bottom:8,left:8,right:8}}>
-            <Text style={styles.headerTitle}>DokanMate</Text>
+            <View style={styles.headerLeft}>
+              <Image
+                source={require('../../assets/logo.png')}
+                style={styles.logo}
+              />
+              <View>
+                <Text style={styles.headerTitle}>DokanMate</Text>
+                <Text style={styles.headerDate}>{today}</Text>
+              </View>
+            </View>
           </TouchableOpacity>
-          <Text style={styles.headerDate}>{today}</Text>
+          {/*<Text style={styles.headerDate}>{today}</Text>*/}
         </View>
         <TouchableOpacity
           onPress={() => router.push('/settings')}
@@ -273,6 +283,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  logo: {
+    width: 52,
+    height: 52,
+    resizeMode: 'contain',
+    borderRadius: 10,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -285,9 +301,14 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
     color: Colors.primary,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   headerDate: {
     fontSize: 12,
@@ -488,7 +509,7 @@ const styles = StyleSheet.create({
   },
   settingsBtn: {
     padding: 8,
-    borderRadius: 8,
+    borderRadius: 10,
     backgroundColor: Colors.background,
     borderWidth: 1,
     borderColor: Colors.border,
